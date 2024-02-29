@@ -4,10 +4,16 @@
 ## Reset admin password
 ```
 export BOUNDARY_ADDR=localhost
+export BOUNDARY_KEYRING_TYPE=none
+export BOUNDARY_CLI_FORMAT=json
+export BOUNDARY_RECOVERY_CONFIG=./conf/boundary.hcl
 
-ADMIN_ACCOUNT_ID=$(boundary users list -keyring-type=none -recovery-config ./conf/boundary.hcl -format json | jq -rc '.items[] | select(.name == "admin")' | jq -rc '.primary_account_id')
-
-boundary accounts set-password -id $ADMIN_ACCOUNT_ID -keyring-type=none -recovery-config ./conf/boundary.hcl
+ADMIN_ACCOUNT_ID=$(boundary users list | jq -rc '.items[] | select(.name == "admin")' | jq -rc '.primary_account_id')
+if [ -z "$ADMIN_ACCOUNT_ID" ] || [ "$ADMIN_ACCOUNT_ID" == "null" ]; then
+  AUTH_METHOD_ID=$(boundary auth-methods list | jq -rc '.items[] | select(.type == "password" and .scope_id =="global")' | jq -rc '.id')
+  ADMIN_ACCOUNT_ID=$(boundary accounts list -auth-method-id $AUTH_METHOD_ID | jq -rc '.items[] | select(.attributes.login_name == "admin")' | jq -rc '.id')
+fi
+boundary accounts set-password -id $ADMIN_ACCOUNT_ID
 ```
 
 ## Boundary user login via oidc
@@ -30,22 +36,26 @@ boundary authenticate oidc
 The following script will go over all targets defined in Boundary and rotate SSH keys:
 ```
 export BOUNDARY_ADDR=localhost
-export GLOBAL_SCOPE=`boundary scopes list -format=json | jq -r '.items[] | .id'`
+export BOUNDARY_KEYRING_TYPE=none
+export BOUNDARY_CLI_FORMAT=json
+export BOUNDARY_RECOVERY_CONFIG=./conf/boundary.hcl
+
+export GLOBAL_SCOPE=`boundary scopes list | jq -r '.items[] | .id'`
 TODAY=$(date +'%Y-%m-%d')
 echo "dumping targets"
-readarray -t TARGETS < <(boundary targets list -scope-id=$GLOBAL_SCOPE -recursive -format=json | jq -rc '.items[] | [.id, .name]')
+readarray -t TARGETS < <(boundary targets list -scope-id=$GLOBAL_SCOPE -recursive | jq -rc '.items[] | [.id, .name]')
 for TARGET in "${TARGETS[@]}"; do
   echo "----------------------------------------------------------------"
   TARGET_HOST=$(echo $TARGET | jq -rc '.[1]' | tr '[:upper:]' '[:lower:]')
   TARGET_ID=$(echo $TARGET | jq -rc '.[0]')
   echo "target $TARGET, host $TARGET_HOST, id $TARGET_ID"
-  readarray -t HOST_KEYS < <(boundary targets read -id $TARGET_ID -format json | jq -rc '.item.injected_application_credential_sources[].id')
+  readarray -t HOST_KEYS < <(boundary targets read -id $TARGET_ID | jq -rc '.item.injected_application_credential_sources[].id')
   for HOST_KEY in "${HOST_KEYS[@]}"; do
     echo "host key $HOST_KEY"
     #sanity check
-    CRED_USER=$(boundary credentials read -id $HOST_KEY -format json | jq '.item | select(.type == "ssh_private_key")' | jq -rc '.attributes.username')
+    CRED_USER=$(boundary credentials read -id $HOST_KEY | jq '.item | select(.type == "ssh_private_key")' | jq -rc '.attributes.username')
     echo $CRED_USER
-    if [ -n "$CRED_USER" ]; then
+    if [ -n "$CRED_USER" ] && [ "$CRED_USER" != "null" ]; then
       KEY_NAME="$TARGET_HOST-$CRED_USER-$TODAY"
       echo "Dumping old ~/.ssh/authorized_keys" 
       echo "cat ~/.ssh/authorized_keys" | boundary connect ssh -target-id $TARGET_ID
