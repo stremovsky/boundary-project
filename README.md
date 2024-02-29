@@ -22,9 +22,12 @@ boundary accounts set-password -id $ADMIN_ACCOUNT_ID
 ```
 export BOUNDARY_ADDR=localhost
 export BOUNDARY_PASSWORD='Password123'
+if [ ! -f ~/.gnupg/pubring.kbx ]; then
+  gpg2 --batch --passphrase '' --quick-gen-key mykey default default
+  pass init mykey
+fi
 
 AUTH_METHOD_ID=$(boundary auth-methods list -format json -keyring-type none | jq -rc '.items[] | select(.type == "password" and .scope_id =="global")' | jq -rc '.id')
-
 boundary authenticate password -auth-method-id $AUTH_METHOD_ID -login-name admin --password=env://BOUNDARY_PASSWORD
 ```
 
