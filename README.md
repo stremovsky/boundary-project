@@ -2,6 +2,7 @@
 
 
 ## Reset admin password
+
 ```
 export BOUNDARY_ADDR=localhost
 export BOUNDARY_KEYRING_TYPE=none
@@ -16,7 +17,19 @@ fi
 boundary accounts set-password -id $ADMIN_ACCOUNT_ID
 ```
 
+## Boundary admin user login via password
+
+```
+export BOUNDARY_ADDR=localhost
+export BOUNDARY_PASSWORD='Password123'
+
+AUTH_METHOD_ID=$(boundary auth-methods list -format json -keyring-type none | jq -rc '.items[] | select(.type == "password" and .scope_id =="global")' | jq -rc '.id')
+
+boundary authenticate password -auth-method-id $AUTH_METHOD_ID -login-name admin --password=env://BOUNDARY_PASSWORD
+```
+
 ## Boundary user login via oidc
+
 ```
 export BOUNDARY_ADDR=localhost
 
@@ -34,6 +47,7 @@ boundary authenticate oidc
 ## SSH Key rotation script
 
 The following script will go over all targets defined in Boundary and rotate SSH keys:
+
 ```
 export BOUNDARY_ADDR=localhost
 export BOUNDARY_KEYRING_TYPE=none
