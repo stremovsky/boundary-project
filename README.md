@@ -44,6 +44,18 @@ fi
 boundary authenticate oidc
 ```
 
+## Open SSH connection to remote server via boundary
+
+```
+boundary connect ssh -target-id tssh_xxmlOvaQDT
+```
+
+## Run script on remove server via boundary
+
+```
+echo "/root/script.sh" | boundary connect ssh -target-id tssh_xxmlOvaQDT
+```
+
 ## SSH Key rotation script
 
 The following script will go over all targets defined in Boundary and rotate SSH keys:
