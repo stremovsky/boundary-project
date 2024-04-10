@@ -59,6 +59,13 @@ boundary connect ssh -target-id tssh_xxmlOvaQDT
 echo "/root/script.sh" | boundary connect ssh -target-id tssh_xxmlOvaQDT
 ```
 
+## Read user JWT token returned form Active Directory
+1. Sign into boundary with ``boundary authenticate oidc``
+2. Copy **Account ID** value and use it with next command:
+```
+boundary accounts read -id ACCOUND_ID
+```
+
 ## SSH Key rotation script
 
 The following script will go over all targets defined in Boundary and rotate SSH keys:
