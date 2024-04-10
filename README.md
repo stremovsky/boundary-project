@@ -60,8 +60,12 @@ echo "/root/script.sh" | boundary connect ssh -target-id tssh_xxmlOvaQDT
 ```
 
 ## Read user JWT token returned form Active Directory
-1. Sign into boundary with ``boundary authenticate oidc``
-2. Copy **Account ID** value and use it with next command:
+1. Sign into boundary with ``boundary authenticate oidc`` and copy **Account ID**
+2. If you've already signed into Boundary, you can use the following command to read the **Account ID**:
+```
+pass HashiCorp_Boundary/default | jq -rc '.Data' | base64 --decode | base64 --decode | jq -rc '.account_id'
+```
+3. Pass the **Account ID** in the following command:
 ```
 boundary accounts read -id ACCOUND_ID
 ```
